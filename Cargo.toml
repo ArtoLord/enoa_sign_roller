@@ -1,0 +1,23 @@
+[package]
+name = "enoa_sign_bot"
+version = "0.1.0"
+authors = ["ArtoLord <artolord@yandex.ru>"]
+edition = "2021"
+
+[dependencies]
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "collector"] }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread"] }
+deadpool-postgres = { version = "0.9" }
+tokio-postgres = { version = "0.7", features = ["with-uuid-0_8"] }
+refinery = { version = "0.8", features = ["tokio-postgres"]}
+dotenv = "0.15.0"
+config = "0.14.0"
+serde = "1.0"
+anyhow = "1.0.80"
+log = "0.4"
+env_logger = "0.11.2"
+chrono = "0.4.34"
+rand = "0.8.5"
+
+[dev-dependencies]
+testcontainers-modules = {version = "0.3.4", features = ["postgres"]}
