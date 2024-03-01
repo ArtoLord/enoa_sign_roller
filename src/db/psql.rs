@@ -9,20 +9,6 @@ use std::{ops::DerefMut, time::SystemTime};
 
 use super::{GuildInfo, SignInfo, SignState, UserInfo};
 
-#[derive(Debug, serde::Deserialize)]
-struct Config {
-    pg: deadpool_postgres::Config
-}
-
-impl Config {
-    pub fn from_env() -> Result<Self> {
-        Ok(config::Config::builder()
-            .add_source(config::Environment::default().separator("__"))
-            .build()?
-            .try_deserialize()?)
-    }
-}
-
 mod embedded {
     use refinery::embed_migrations;
     embed_migrations!("./migrations");
@@ -184,7 +170,7 @@ impl Dao for PsqlDao {
         let stmt = client.prepare(r#"
             UPDATE guilds
             SET sign_state = $1, sign_state_made_by_id = $2
-            WHERE id = $3 AND sign_state = 'Created' AND sign_created_by_id <> $2 AND sign_created_at >= NOW()::date
+            WHERE id = $3 AND sign_state = 'Created' AND sign_created_at >= NOW()::date
             RETURNING sign_id, sign_created_at, sign_created_by_id
         "#).await?;
 
@@ -223,11 +209,6 @@ impl Dao for PsqlDao {
             },
         }))
     }
-}
-
-pub async fn init() -> Result<PsqlDao> {
-    let cfg = Config::from_env().with_context(|| "Cannot parse psql db config")?;
-    init_with_config(cfg.pg).await
 }
 
 pub async fn init_with_config(cfg: deadpool_postgres::Config) -> Result<PsqlDao> {

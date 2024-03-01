@@ -1,4 +1,5 @@
 use anyhow::Result;
+use indoc::formatdoc;
 use log::info;
 use rand::Rng;
 use serenity::all::{ComponentInteraction, Context, CreateInteractionResponse, CreateInteractionResponseMessage};
@@ -36,12 +37,14 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
     let value = roll + m;
     let difficulty = 15;  // TODO: get from sign description
     let mut shaman_power_decreased = false;
+    let mut success = false;
 
     let state = if value >= 15 {
         if rand::thread_rng().gen_bool(0.5) {
             shaman_power_decreased = true;
             user_info.shaman_power -= 1;
         }
+        success = true;
         SignState::Success { by_user_id: user_id }
     } else {
         user_info.shaman_power += 1;
@@ -68,11 +71,31 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
     }
 
 
-    dao.save_user_info(user_info).await?;
+    dao.save_user_info(user_info.clone()).await?;
     let res = res.ok().unwrap();
+
+    let result_message = formatdoc!(r#"
+        __**Знамение изменено**__
+        *<@{}> попытался повлиять на судьбу, {}*
+        Его шаманская сила {} и равна {}
+
+        
+        {}"#,
+        interaction.user.id.get(),
+        if success {"и у него получилось"} else {"но сделал только хуже"},
+        if success && shaman_power_decreased {
+            "уменьшилась"
+        } else if !success {
+            "увеличилась"
+        } else {
+            "не изменилась"
+        },
+        user_info.shaman_power,
+        render_sign(res.current_sign)
+    );
 
     Ok(CreateInteractionResponse::Message(
         CreateInteractionResponseMessage::new()
-            .content(render_sign(res.current_sign))
+            .content(result_message)
     ))
 }

@@ -5,6 +5,7 @@ use anyhow::Result;
 
 pub mod psql;
 
+#[derive(Debug, Clone)]
 pub struct UserInfo {
     pub id: u64,
     pub guild_id: u64,

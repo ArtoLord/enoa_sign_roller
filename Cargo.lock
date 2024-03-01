@@ -467,10 +467,12 @@ dependencies = [
  "deadpool-postgres",
  "dotenv",
  "env_logger",
+ "indoc",
  "log",
  "rand",
  "refinery",
  "serde",
+ "serde_json",
  "serenity",
  "testcontainers-modules",
  "tokio",
@@ -837,6 +839,12 @@ dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
 ]
+
+[[package]]
+name = "indoc"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e186cfbae8084e513daff4240b4797e342f988cecda4fb6c939150f96315fd8"
 
 [[package]]
 name = "ipnet"
