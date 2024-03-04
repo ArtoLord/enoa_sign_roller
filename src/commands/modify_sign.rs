@@ -2,18 +2,16 @@ use anyhow::Result;
 use indoc::formatdoc;
 use log::info;
 use rand::Rng;
-use serenity::all::{ComponentInteraction, Context, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage};
+use serenity::all::{CacheHttp, ComponentInteraction, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage};
 
 use crate::{commands::utils, db::{SignState, UserInfo}, discord::Handler, signs::{self, render_sign}};
 
-pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentInteraction) -> Result<Option<CreateInteractionResponse>> {
+pub async fn run(handler: &Handler, ctx: impl CacheHttp, interaction: &mut ComponentInteraction) -> Result<CreateInteractionResponse> {
     let user_id = interaction.user.id.get();
     let guild_id = interaction.guild_id;
 
     if guild_id.is_none() {
-        return Ok(Some(
-            utils::format_error("Мне можно написать только с сервера.")
-        ));
+        return Ok(utils::format_error("Мне можно написать только с сервера."));
     }
 
     let guild_id = guild_id.unwrap().get();
@@ -24,7 +22,7 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentIn
     let guild_info = dao.get_guild_info(guild_id).await?;
 
     if guild_info.is_none() {
-        return Ok(Some(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!")));
+        return Ok(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!"));
     }
     let guild_info = guild_info.unwrap();
 
@@ -56,19 +54,19 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentIn
     if res.is_err() {
         let res = res.err().unwrap();
         if res.is_none() {
-            return Ok(Some(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!")));
+            return Ok(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!"));
         }
 
         let res = res.unwrap();
         if res.current_sign.state != SignState::Created {
-            return Ok(Some(utils::format_error("Кто-то уже повлиял на знамение сегодня")));
+            return Ok(utils::format_error("Кто-то уже повлиял на знамение сегодня"));
         }
 
         if res.current_sign.created_by_user_id == user_id {
-            return Ok(Some(utils::format_error("Повлиять на знамение может только тот, кто его не создавал")));
+            return Ok(utils::format_error("Повлиять на знамение может только тот, кто его не создавал"));
         }
 
-        return Ok(Some(utils::format_error("Ты не можешь повлиять на знамение сейчас")));
+        return Ok(utils::format_error("Ты не можешь повлиять на знамение сейчас"));
     }
 
     dao.save_user_info(user_info.clone()).await?;
@@ -103,8 +101,8 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentIn
         render_sign(res.current_sign)
     );
 
-    Ok(Some(CreateInteractionResponse::Message(
+    Ok(CreateInteractionResponse::Message(
         CreateInteractionResponseMessage::new()
             .content(result_message)
-    )))
+    ))
 }

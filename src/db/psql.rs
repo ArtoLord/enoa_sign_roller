@@ -14,6 +14,7 @@ mod embedded {
     embed_migrations!("./migrations");
 }
 
+#[derive(Clone)]
 pub struct PsqlDao {
     pool: Pool
 }

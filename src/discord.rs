@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error, info};
-use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, CreateInteractionResponse, EventHandler, Interaction, Ready}, async_trait};
+use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, CreateInteractionResponse, EventHandler, Http, Interaction, Ready}, async_trait};
 
 use crate::{commands::{self, utils}, db::Dao};
 
@@ -13,14 +13,14 @@ impl Handler {
         Handler { dao }
     }
 
-    async fn init_guilds(&self, ctx: serenity::all::Context) -> Result<()> {
+    pub async fn init_guilds(&self, ctx: &(impl AsRef<Http> + CacheHttp)) -> Result<()> {
         let guilds = ctx.http().get_guilds(None, None).await
             .with_context(|| "Cannot get bot guilds list")?;
 
         for guild in guilds {
             info!("Initing commands for guild {}", guild.id);
 
-            guild.id.set_commands(&ctx.http, vec![
+            guild.id.set_commands(ctx, vec![
                 commands::sign_roll::register(),
                 commands::sign_current::register()
             ])
@@ -31,14 +31,7 @@ impl Handler {
         Ok(())
     }
 
-    pub fn dao(&self) -> &Box<dyn Dao> {
-        &self.dao
-    }
-}
-
-#[async_trait]
-impl EventHandler for Handler {
-    async fn interaction_create(&self, ctx: serenity::all::Context, mut interaction: Interaction) {
+    pub async fn handle_interaction(&self, ctx: impl CacheHttp, mut interaction: Interaction) -> CreateInteractionResponse {
         debug!("Created interraction {:#?}", interaction);
 
         let res = match &mut interaction {
@@ -67,35 +60,31 @@ impl EventHandler for Handler {
         if res.is_err() {
             let err = res.unwrap_err();
             error!("Cannot process interraction {:?}: {}", &interaction, err);
-
-            let res = send_resp(interaction, utils::format_error("Что-то пошло не так"), &ctx).await;
-            if res.is_err() {
-                error!("Cannot send response: {:?}", res)
-            }
-            return;
+            return utils::format_error("Что-то пошло не так");
         }
 
-        let res = res.unwrap();
-        if res.is_none() {
-            return ;
-        }
+        res.unwrap()
+    }
 
-        let res = res.unwrap();
+    pub fn dao(&self) -> &Box<dyn Dao> {
+        &self.dao
+    }
+}
 
-        let res = send_resp(interaction, res, &ctx).await;
-        if res.is_err() {
-            error!("Cannot send response: {:?}", res)
-        }
-
+#[async_trait]
+impl EventHandler for Handler {
+    async fn interaction_create(&self, ctx: serenity::all::Context, interaction: Interaction) {
+        let res = self.handle_interaction(&ctx, interaction.clone()).await;
+        send_resp(interaction, res, &ctx).await;
     }
 
     async fn ready(&self, ctx: serenity::all::Context, ready: Ready) {
         info!("{} is connected!", ready.user.name);
-        self.init_guilds(ctx.clone()).await.expect("Cannot init commands for guilds");
+        self.init_guilds(&ctx.clone()).await.expect("Cannot init commands for guilds");
     }
 }
 
-async fn send_resp(interaction: Interaction, resp: CreateInteractionResponse, ctx: &serenity::all::Context) -> Result<()> {
+async fn send_resp(interaction: Interaction, resp: CreateInteractionResponse, ctx: &impl CacheHttp) -> Result<()> {
     match interaction {
         Interaction::Command(cmd) => cmd.create_response(ctx, resp).await?,
         Interaction::Component(component) => component.create_response(ctx, resp).await?,

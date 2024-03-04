@@ -1,18 +1,18 @@
 use anyhow::Result;
 use log::info;
 use rand::Rng;
-use serenity::all::{CommandInteraction, Context, CreateButton, CreateCommand, CreateInteractionResponse, CreateInteractionResponseMessage};
+use serenity::all::{CacheHttp, CommandInteraction, CreateButton, CreateCommand, CreateInteractionResponse, CreateInteractionResponseMessage};
 
 use crate::{commands::utils, discord::Handler, signs};
 
-pub async fn run(handler: &Handler, _ctx: &Context, interaction: &CommandInteraction) -> Result<Option<CreateInteractionResponse>> {
+pub async fn run(handler: &Handler, _ctx: impl CacheHttp, interaction: &CommandInteraction) -> Result<CreateInteractionResponse> {
     let user_id = interaction.user.id;
     let guild_id = interaction.guild_id;
 
     if guild_id.is_none() {
-        return Ok(Some(
+        return Ok(
             utils::format_error("Мне можно написать только с сервера.")
-        ));
+        );
     }
 
     let guild_id = guild_id.unwrap();
@@ -35,10 +35,10 @@ pub async fn run(handler: &Handler, _ctx: &Context, interaction: &CommandInterac
 
     if guild.is_none() {
         info!("Sign for guild {} already exists, skipping request from user {}", guild_id, user_id);
-        return Ok(Some(
+        return Ok(
             utils::format_error(
                 "Знамение на сегодня уже создано, приходи завтра"
-            ))
+            )
         );
     }
 
@@ -54,7 +54,7 @@ pub async fn run(handler: &Handler, _ctx: &Context, interaction: &CommandInterac
                 )
     );
 
-    Ok(Some(msg))
+    Ok(msg)
 }
 
 pub fn register() -> CreateCommand {
