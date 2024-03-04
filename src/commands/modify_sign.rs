@@ -2,18 +2,18 @@ use anyhow::Result;
 use indoc::formatdoc;
 use log::info;
 use rand::Rng;
-use serenity::all::{ComponentInteraction, Context, CreateInteractionResponse, CreateInteractionResponseMessage};
+use serenity::all::{ComponentInteraction, Context, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage};
 
 use crate::{commands::utils, db::{SignState, UserInfo}, discord::Handler, signs::render_sign};
 
-pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentInteraction) -> Result<CreateInteractionResponse> {
+pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentInteraction) -> Result<Option<CreateInteractionResponse>> {
     let user_id = interaction.user.id.get();
     let guild_id = interaction.guild_id;
 
     if guild_id.is_none() {
-        return Ok(
+        return Ok(Some(
             utils::format_error("Мне можно написать только с сервера.")
-        );
+        ));
     }
 
     let guild_id = guild_id.unwrap().get();
@@ -24,7 +24,7 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
     let guild_info = dao.get_guild_info(guild_id).await?;
 
     if guild_info.is_none() {
-        return Ok(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!"));
+        return Ok(Some(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!")));
     }
 
     let mut user_info = match user_info {
@@ -39,7 +39,7 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
     let mut shaman_power_decreased = false;
     let mut success = false;
 
-    let state = if value >= 15 {
+    let state = if value >= difficulty {
         if rand::thread_rng().gen_bool(0.5) {
             shaman_power_decreased = true;
             user_info.shaman_power -= 1;
@@ -55,31 +55,39 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
     if res.is_err() {
         let res = res.err().unwrap();
         if res.is_none() {
-            return Ok(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!"));
+            return Ok(Some(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!")));
         }
 
         let res = res.unwrap();
         if res.current_sign.state != SignState::Created {
-            return Ok(utils::format_error("Кто-то уже повлиял на знамение сегодня"));
+            return Ok(Some(utils::format_error("Кто-то уже повлиял на знамение сегодня")));
         }
 
         if res.current_sign.created_by_user_id == user_id {
-            return Ok(utils::format_error("Повлиять на знамение может только тот, кто его не создавал"));
+            return Ok(Some(utils::format_error("Повлиять на знамение может только тот, кто его не создавал")));
         }
 
-        return Ok(utils::format_error("Ты не можешь повлиять на знамение сейчас"));
+        return Ok(Some(utils::format_error("Ты не можешь повлиять на знамение сейчас")));
     }
-
 
     dao.save_user_info(user_info.clone()).await?;
     let res = res.ok().unwrap();
+    let content = interaction.message.content.clone();
+
+    interaction.message.edit(ctx, EditMessage::new()
+        .content(content)
+        .button(CreateButton::new("change_sign")
+            .disabled(true)
+            .style(serenity::all::ButtonStyle::Primary)
+            .label("Повлиять на знамение")
+        )).await?;
 
     let result_message = formatdoc!(r#"
         __**Знамение изменено**__
         *<@{}> попытался повлиять на судьбу, {}*
         Его шаманская сила {} и равна {}
 
-        
+
         {}"#,
         interaction.user.id.get(),
         if success {"и у него получилось"} else {"но сделал только хуже"},
@@ -94,8 +102,8 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &ComponentIntera
         render_sign(res.current_sign)
     );
 
-    Ok(CreateInteractionResponse::Message(
+    Ok(Some(CreateInteractionResponse::Message(
         CreateInteractionResponseMessage::new()
             .content(result_message)
-    ))
+    )))
 }

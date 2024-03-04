@@ -25,7 +25,7 @@ pub struct SignInfo {
     pub id: String,
     pub created_by_user_id: u64,
     pub state: SignState,
-    pub created_at: SystemTime
+    pub created_at: SystemTime,
 }
 
 pub struct GuildInfo {

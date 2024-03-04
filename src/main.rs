@@ -1,11 +1,5 @@
 use std::env;
-
-use db::Dao;
 use discord::Handler;
-use serenity::all::{EventHandler, GuildId};
-use serenity::async_trait;
-use serenity::model::application::{Command, Interaction};
-use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 use dotenv::dotenv;
 

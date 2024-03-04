@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error, info};
-use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, Content, CreateInteractionResponse, CreateInteractionResponseMessage, EventHandler, Interaction, Ready}, async_trait};
+use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, CreateInteractionResponse, EventHandler, Interaction, Ready}, async_trait};
 
 use crate::{commands::{self, utils}, db::Dao};
 
@@ -21,7 +21,6 @@ impl Handler {
             info!("Initing commands for guild {}", guild.id);
 
             guild.id.set_commands(&ctx.http, vec![
-                commands::hello_world::register(),
                 commands::sign_roll::register(),
                 commands::sign_current::register()
             ])
@@ -39,14 +38,13 @@ impl Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn interaction_create(&self, ctx: serenity::all::Context, interaction: Interaction) {
+    async fn interaction_create(&self, ctx: serenity::all::Context, mut interaction: Interaction) {
         debug!("Created interraction {:#?}", interaction);
 
-        let res = match &interaction {
+        let res = match &mut interaction {
             Interaction::Command(command) => {
                 info!("Received command interaction: {}", command.data.name);
                 match command.data.name.as_str() {
-                    "hello" => commands::hello_world::run(&ctx, &command).await,
                     "sign_roll" => commands::sign_roll::run(&self, &ctx, &command).await,
                     "sign_current" => commands::sign_current::run(&self, &ctx, &command).await,
                     cmd => Err(anyhow!(format!("Command {} not found", cmd))),
@@ -56,7 +54,7 @@ impl EventHandler for Handler {
                 match &component.data {
                     ComponentInteractionData {custom_id, kind: ComponentInteractionDataKind::Button, ..} => {
                         match custom_id.as_str() {
-                            "change_sign" => commands::modify_sign::run(&self, &ctx, &component).await,
+                            "change_sign" => commands::modify_sign::run(&self, &ctx, component).await,
                             cmd => Err(anyhow!(format!("Component not found {}", cmd)))
                         }
                     }
@@ -78,6 +76,12 @@ impl EventHandler for Handler {
         }
 
         let res = res.unwrap();
+        if res.is_none() {
+            return ;
+        }
+
+        let res = res.unwrap();
+
         let res = send_resp(interaction, res, &ctx).await;
         if res.is_err() {
             error!("Cannot send response: {:?}", res)
