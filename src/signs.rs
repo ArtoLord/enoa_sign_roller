@@ -12,7 +12,7 @@ static DATA: OnceLock<HashMap<String, SignData>> = OnceLock::new();
 struct SignData {
     id: String,
     name: String,
-    difficulty: u32,
+    difficulty: i32,
     description: String,
     effect: String,
     success_effect: String,
@@ -38,9 +38,9 @@ pub fn load_signs(file_path: String) -> Result<()> {
 }
 
 pub fn render_sign(sign: SignInfo) -> String {
-    let sign = DATA.get().unwrap().get(&sign.id).unwrap();
+    let sign_desc = DATA.get().unwrap().get(&sign.id).unwrap();
 
-    formatdoc!(r#"
+    let mut res = formatdoc!(r#"
     __**{}**__
     **Кости:** {}
     **Сложность:** {}
@@ -48,7 +48,29 @@ pub fn render_sign(sign: SignInfo) -> String {
     > *{}*
 
     **Эффект:** {}
-    **Успех:** {}
-    **Провал:** {}
-    "#, sign.name, sign.id, sign.difficulty, sign.description, sign.effect, sign.success_effect, sign.failure_effect)
+    "#, sign_desc.name, sign_desc.id, sign_desc.difficulty, sign_desc.description, sign_desc.effect);
+
+    match sign.state {
+        crate::db::SignState::Created => res.push_str(&formatdoc!(r#"
+            **Успех:** {}
+            **Провал:** {}
+            "#, sign_desc.success_effect, sign_desc.failure_effect)
+        ),
+        crate::db::SignState::Success { by_user_id: _ } => res.push_str(&formatdoc!(r#"
+            **Эффект после изменения:** {}
+            "#, sign_desc.success_effect)
+        ),
+        crate::db::SignState::Failed { by_user_id: _ } => res.push_str(&formatdoc!(r#"
+            **Эффект после изменения:** {}
+            "#, sign_desc.failure_effect)
+        ),
+    };
+
+    res
+}
+
+pub fn get_difficulty(sign_id: String) -> i32 {
+    let sign = DATA.get().unwrap().get(&sign_id).unwrap();
+
+    sign.difficulty
 }

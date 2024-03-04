@@ -4,7 +4,7 @@ use log::info;
 use rand::Rng;
 use serenity::all::{ComponentInteraction, Context, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage};
 
-use crate::{commands::utils, db::{SignState, UserInfo}, discord::Handler, signs::render_sign};
+use crate::{commands::utils, db::{SignState, UserInfo}, discord::Handler, signs::{self, render_sign}};
 
 pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentInteraction) -> Result<Option<CreateInteractionResponse>> {
     let user_id = interaction.user.id.get();
@@ -26,6 +26,7 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentIn
     if guild_info.is_none() {
         return Ok(Some(utils::format_error("Сегодня еще не было знамения. Ты можешь его создать!")));
     }
+    let guild_info = guild_info.unwrap();
 
     let mut user_info = match user_info {
         Some(u) => u,
@@ -35,7 +36,7 @@ pub async fn run(handler: &Handler, ctx: &Context, interaction: &mut ComponentIn
     let m = user_info.shaman_power / 2 - 5;
     let roll = rand::thread_rng().gen_range(1..=20);
     let value = roll + m;
-    let difficulty = 15;  // TODO: get from sign description
+    let difficulty = signs::get_difficulty(guild_info.current_sign.id);
     let mut shaman_power_decreased = false;
     let mut success = false;
 
