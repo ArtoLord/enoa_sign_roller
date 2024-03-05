@@ -54,6 +54,7 @@ impl Handler {
                     s => Err(anyhow!(format!("Component not found {:?}", s.kind)))
                 }
             },
+            Interaction::Ping(_) => Ok(CreateInteractionResponse::Pong),
             i => Err(anyhow!(format!("Interraction {:?} not supported", i)))
         };
 
@@ -75,7 +76,7 @@ impl Handler {
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: serenity::all::Context, interaction: Interaction) {
         let res = self.handle_interaction(&ctx, interaction.clone()).await;
-        send_resp(interaction, res, &ctx).await;
+        let _ = send_resp(interaction, res, &ctx).await;
     }
 
     async fn ready(&self, ctx: serenity::all::Context, ready: Ready) {

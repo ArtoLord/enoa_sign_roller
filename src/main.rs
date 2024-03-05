@@ -24,19 +24,21 @@ async fn main() {
     let handler = Handler::new(Box::new(dao.clone()));
 
     let token = config.discord_token();
-
     let intents = GatewayIntents::GUILDS | GatewayIntents::GUILD_MEMBERS | GatewayIntents::GUILD_MESSAGES;
 
-    let mut client = Client::builder(token, intents)
-        .event_handler(handler)
-        .application_id(ApplicationId::new(config.application_id()))
-        .await
-        .expect("Error creating client");
+    let client_builder = Client::builder(token, intents)
+        .application_id(ApplicationId::new(config.application_id()));
 
     if let Some(cfg) = config.server() {
+        let client = client_builder.await.expect("Error creating client");
         discord_endpoint_server::start(Handler::new(Box::new(dao.clone())), client, cfg.clone()).await.unwrap();
         return;
     }
+
+    let mut client = client_builder
+        .event_handler(handler)
+        .await
+        .expect("Error creating client");
     
     if let Err(why) = client.start().await {
         println!("Client error: {why:?}");

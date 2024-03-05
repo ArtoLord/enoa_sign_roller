@@ -1,4 +1,4 @@
-use std::{convert::Infallible, net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, env, net::{Ipv4Addr, SocketAddr, SocketAddrV4}, sync::Arc};
 use anyhow::{anyhow, Result};
 use hyper_util::rt::TokioIo;
 use log::error;
@@ -52,14 +52,15 @@ impl Server {
         let interaction = json::from_slice::<Interaction>(&body)?;
 
         let res = self.handler.handle_interaction(&self.client.http, interaction).await;
-        Ok(Response::new(Full::new(json::to_vec(&res)?.into())))
+        Ok(Response::builder()
+            .header("Content-Type", "application/json")
+            .status(200)
+            .body( Full::new(json::to_vec(&res)?.into()))?)
     }
 }
 
 pub async fn start(handler: Handler, client: Client, config: ServerConf) -> Result<()> {
-    handler.init_guilds(&client.http).await?;
-
-    let addr: SocketAddr = config.address().parse()?;
+    let addr: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), env::var("PORT")?.parse()?));
     let listener = TcpListener::bind(addr).await?;
 
     let server = Arc::new(Server {
@@ -81,7 +82,7 @@ pub async fn start(handler: Handler, client: Client, config: ServerConf) -> Resu
                 .serve_connection(io, service_fn(|req| server_ref.handle(req)))
                 .await
             {
-                println!("Error serving connection: {:?}", err);
+                error!("Error serving connection: {:?}", err);
             }
         });
     }
