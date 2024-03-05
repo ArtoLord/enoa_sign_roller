@@ -6,6 +6,8 @@ use serenity::{all::Interaction, interactions_endpoint::Verifier, json, Client};
 use http_body_util::{BodyExt, Full};
 use hyper::{body::{Bytes, Incoming}, server::conn::http1, service::service_fn, Request, Response};
 use tokio::net::TcpListener;
+use querystring::querify;
+use std::collections::HashMap;
 
 use crate::{config::ServerConf, discord::Handler};
 
@@ -33,6 +35,10 @@ impl Server {
     }
 
     async fn handle_impl(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>> {
+        if req.uri().path() == "/oauth" {
+            return self.oauth(req).await;
+        }
+
         let headers = req.headers().clone();
 
         let find_header = |name| Some(headers.iter().find(|h| h.0 == name)?.1.to_str());
@@ -56,6 +62,24 @@ impl Server {
             .header("Content-Type", "application/json")
             .status(200)
             .body( Full::new(json::to_vec(&res)?.into()))?)
+    }
+
+    async fn oauth(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>> {
+        // TODO: make proper oauth process here
+        // I can add here bot setting process
+        // For now it is just OK page and handle to register bot commands on server
+
+        let uri = req.uri();
+        let query: HashMap<&str, &str> = querify(uri.query().unwrap_or("")).into_iter().collect();
+
+        let guild = query.get("guild_id");
+
+        if let Some(guild_id) = guild {
+            let id: u64 = guild_id.parse()?;
+            self.handler.init_guild(&self.client.http, id).await?;
+        }
+
+        Ok(Response::new(Full::new("Bot is added to server!".as_bytes().into())))
     }
 }
 

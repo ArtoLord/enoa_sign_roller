@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error, info};
-use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, CreateInteractionResponse, EventHandler, Http, Interaction, Ready}, async_trait};
+use serenity::{all::{CacheHttp, ComponentInteractionData, ComponentInteractionDataKind, CreateInteractionResponse, EventHandler, GuildId, Http, Interaction, Ready}, async_trait};
 
 use crate::{commands::{self, utils}, db::Dao};
 
@@ -18,18 +18,25 @@ impl Handler {
             .with_context(|| "Cannot get bot guilds list")?;
 
         for guild in guilds {
-            info!("Initing commands for guild {}", guild.id);
-
-            guild.id.set_commands(ctx, vec![
-                commands::sign_roll::register(),
-                commands::sign_current::register()
-            ])
-                .await.with_context(|| format!("Cannot init commands in guild {}", guild.id))?;
+            self.init_guild(ctx, guild.id.get()).await?;
         }
 
         info!("Commands for guilds inited");
         Ok(())
     }
+
+    pub async fn init_guild(&self, ctx: &(impl AsRef<Http> + CacheHttp), guild_id: u64) -> Result<()> {
+        info!("Initing commands for guild {}", guild_id);
+
+        GuildId::new(guild_id).set_commands(ctx, vec![
+            commands::sign_roll::register(),
+            commands::sign_current::register()
+        ])
+        .await.with_context(|| format!("Cannot init commands in guild {}", guild_id))?;
+
+        Ok(())
+    }
+
 
     pub async fn handle_interaction(&self, ctx: impl CacheHttp, mut interaction: Interaction) -> CreateInteractionResponse {
         debug!("Created interraction {:#?}", interaction);
