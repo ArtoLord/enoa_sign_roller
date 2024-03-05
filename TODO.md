@@ -1,6 +1,6 @@
 * Sign rendering (Done)
 * Disable button after changing sign (Done)
-* OAuth when adding bot to server
+* OAuth when adding bot to server (Done)
 * Add button to roll sign on NotFound error
 * Admin commands
 * Bot settings
