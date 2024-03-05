@@ -30,7 +30,8 @@ impl Handler {
 
         GuildId::new(guild_id).set_commands(ctx, vec![
             commands::sign_roll::register(),
-            commands::sign_current::register()
+            commands::sign_current::register(),
+            commands::sign_my_power::register()
         ])
         .await.with_context(|| format!("Cannot init commands in guild {}", guild_id))?;
 
@@ -39,7 +40,7 @@ impl Handler {
 
 
     pub async fn handle_interaction(&self, ctx: impl CacheHttp, mut interaction: Interaction) -> CreateInteractionResponse {
-        debug!("Created interraction {:#?}", interaction);
+        debug!("Created interraction {:?}", interaction);
 
         let res = match &mut interaction {
             Interaction::Command(command) => {
@@ -47,6 +48,7 @@ impl Handler {
                 match command.data.name.as_str() {
                     "sign_roll" => commands::sign_roll::run(&self, &ctx, &command).await,
                     "sign_current" => commands::sign_current::run(&self, &ctx, &command).await,
+                    "sign_my_power" => commands::sign_my_power::run(&self, &ctx, &command).await,
                     cmd => Err(anyhow!(format!("Command {} not found", cmd))),
                 }
             },
