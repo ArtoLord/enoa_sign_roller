@@ -178,7 +178,7 @@ impl Dao for PsqlDao {
         let (state, state_made_by) = match new_state {
             SignState::Created => Err(anyhow!("New state canot be Created")),
             SignState::Success { by_user_id } => Ok(("Success", by_user_id.to_string())),
-            SignState::Failed { by_user_id } => Ok(("Success", by_user_id.to_string())),
+            SignState::Failed { by_user_id } => Ok(("Failed", by_user_id.to_string())),
         }?;
 
         let res = client.query_opt(&stmt, &[
