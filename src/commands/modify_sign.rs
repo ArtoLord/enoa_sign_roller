@@ -38,6 +38,8 @@ pub async fn run(handler: &Handler, ctx: impl CacheHttp, interaction: &mut Compo
     let mut shaman_power_decreased = false;
     let mut success = false;
 
+    info!("Sign change: {} rolled {} and they modifyer is {}, difficulty is {}", user_id, roll, m, difficulty);
+
     let state = if value >= difficulty {
         if rand::thread_rng().gen_bool(0.5) {
             shaman_power_decreased = true;
@@ -83,11 +85,12 @@ pub async fn run(handler: &Handler, ctx: impl CacheHttp, interaction: &mut Compo
 
     let result_message = formatdoc!(r#"
         __**Знамение изменено**__
+        __Бросок:__ d20 + ({}) = {}
         *<@{}> попытался повлиять на судьбу, {}*
         Его шаманская сила {} и равна {}
 
-
         {}"#,
+        m, roll + m,
         interaction.user.id.get(),
         if success {"и у него получилось"} else {"но сделал только хуже"},
         if success && shaman_power_decreased {
